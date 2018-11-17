@@ -71,7 +71,7 @@ swift_library = rule(
     implementation = _swift_library_impl,
     attrs = {
         "srcs": attr.label_list(allow_files = [".swift"]),
-        "deps": attr.label_list(), # providers = [[SwiftInfo]]
+        "deps": attr.label_list(),
     },
     outputs = {
         "module": "modules/%{name}.swiftmodule",
