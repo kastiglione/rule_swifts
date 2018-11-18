@@ -1,1 +1,5 @@
-let CC = 33
+import B
+
+public class CC {
+    var bb: BB? = nil
+}

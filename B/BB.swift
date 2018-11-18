@@ -1,3 +1,5 @@
 import A
 
-public class BB {}
+public class BB {
+    var aa: AA? = nil
+}

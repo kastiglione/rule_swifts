@@ -7,11 +7,10 @@ def _swift_library_impl(ctx):
     library = ctx.outputs.library
 
     dependencies = [dep[DefaultInfo].files for dep in ctx.attr.deps]
-    swiftmodule_dependencies = [
+    compile_deps = [
         f
         for dependency_set in dependencies
         for f in dependency_set.to_list()
-        if f.extension == "swiftmodule"
     ]
 
     compile_args = [
@@ -20,8 +19,16 @@ def _swift_library_impl(ctx):
         "-enable-batch-mode",
         "-module-name", module_name,
         "-I", module.dirname,
+        "-L", module.dirname,
     ]
     compile_args += [f.path for f in ctx.files.srcs]
+
+    # Map each X.swiftmodule dependency to an `-lX` argument.
+    compile_args += [
+        "-l" + _drop_ext(f.basename)
+        for f in compile_deps
+        if f.extension == "swiftmodule"
+    ]
 
     object_paths = []
     output_file_map = {}
@@ -58,7 +65,7 @@ def _swift_library_impl(ctx):
             "-emit-library", "-o", library.path,
             "-emit-module-path", module.path,
         ],
-        inputs = ctx.files.srcs + swiftmodule_dependencies + [outputs_json],
+        inputs = ctx.files.srcs + compile_deps + [outputs_json],
         outputs = [module, library],
     )
 
