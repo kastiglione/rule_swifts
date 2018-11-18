@@ -31,7 +31,7 @@ def _swift_library_impl(ctx):
         # However the intermediate paths don't exist, it requires a `mkdir -p`.
         # Instead, the output path is bindir/<module_name>_File.o
         prefix = ctx.var["BINDIR"] + "/" + module_name + "_" + _drop_ext(source.basename)
-        object_path = object + ".o"
+        object_path = prefix + ".o"
         object_paths.append(object_path)
         output_file_map[source.path] = {
             "object": object_path,
