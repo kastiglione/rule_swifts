@@ -11,7 +11,7 @@ def _swift_library_impl(ctx):
 
     compile_args = [
         "-incremental",
-        "-v", "-driver-show-incremental",
+        "-driver-show-incremental",
         "-enable-batch-mode",
         "-module-name", module_name,
     ]
