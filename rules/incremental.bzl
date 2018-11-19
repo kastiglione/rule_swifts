@@ -7,28 +7,33 @@ def _swift_library_impl(ctx):
     library = ctx.outputs.library
 
     dependencies = [dep[DefaultInfo].files for dep in ctx.attr.deps]
-    compile_deps = [
-        f
-        for dependency_set in dependencies
-        for f in dependency_set.to_list()
-    ]
+    transitive_files = depset(transitive = dependencies).to_list()
 
     compile_args = [
         "-incremental",
         "-v", "-driver-show-incremental",
         "-enable-batch-mode",
         "-module-name", module_name,
-        "-I", module.dirname,
-        "-L", module.dirname,
     ]
-    compile_args += [f.path for f in ctx.files.srcs]
 
-    # Map each X.swiftmodule dependency to an `-lX` argument.
+    # Search paths for .swiftmodule files.
     compile_args += [
-        "-l" + _drop_ext(f.basename)
-        for f in compile_deps
+        option
+        for f in transitive_files
         if f.extension == "swiftmodule"
+        for option in ("-I", f.dirname)
     ]
+
+    # Pass the dylib paths through to the linker.
+    compile_args += [
+        option
+        for f in transitive_files
+        if f.extension == "dylib"
+        for option in ("-Xlinker", f.path)
+    ]
+
+    # After all that, add the module's Swift source files as args.
+    compile_args += [f.path for f in ctx.files.srcs]
 
     object_paths = []
     output_file_map = {}
@@ -65,12 +70,14 @@ def _swift_library_impl(ctx):
             "-emit-library", "-o", library.path,
             "-emit-module-path", module.path,
         ],
-        inputs = ctx.files.srcs + compile_deps + [outputs_json],
+        inputs = ctx.files.srcs + transitive_files + [outputs_json],
         outputs = [module, library],
     )
 
     return [
-        DefaultInfo(files = depset([module, library], transitive = dependencies)),
+        DefaultInfo(
+            files = depset(direct = [module, library], transitive = dependencies)
+        ),
     ]
 
 
@@ -81,7 +88,7 @@ swift_library = rule(
         "deps": attr.label_list(),
     },
     outputs = {
-        "module": "modules/%{name}.swiftmodule",
-        "library": "modules/lib%{name}.dylib",
+        "module": "%{name}.swiftmodule",
+        "library": "lib%{name}.dylib",
     }
 )
