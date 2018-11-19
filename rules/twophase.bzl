@@ -4,18 +4,14 @@ def _swift_library_impl(ctx):
     module_name = ctx.label.name
 
     dependencies = [dep[DefaultInfo].files for dep in ctx.attr.deps]
-    swiftmodule_dependencies = [
-        f
-        for dependency_set in dependencies
-        for f in dependency_set.to_list()
-        if f.extension == "swiftmodule"
-    ]
+    transitive_files = depset(transitive = dependencies).to_list()
+    swiftmodule_files = [f for f in transitive_files if f.extension == "swiftmodule"]
 
     compile_args = [
         "-O", "-whole-module-optimization",
         "-module-name", module_name,
-        "-I", module.dirname,
     ]
+    compile_args += ["-I" + f.dirname for f in swiftmodule_files]
     compile_args += [f.path for f in ctx.files.srcs]
 
     ctx.actions.run(
@@ -24,7 +20,7 @@ def _swift_library_impl(ctx):
         arguments = compile_args + [
             "-emit-module-path", module.path
         ],
-        inputs = ctx.files.srcs + swiftmodule_dependencies,
+        inputs = ctx.files.srcs + swiftmodule_files,
         outputs = [module],
     )
 
@@ -34,12 +30,15 @@ def _swift_library_impl(ctx):
         arguments = compile_args + [
             "-emit-library", "-o", library.path,
         ],
-        inputs = ctx.files.srcs + swiftmodule_dependencies,
+        inputs = ctx.files.srcs + swiftmodule_files,
         outputs = [library],
     )
 
+
     return [
-        DefaultInfo(files = depset([module, library], transitive = dependencies)),
+        DefaultInfo(
+            files = depset(direct = [module, library], transitive = dependencies),
+        ),
     ]
 
 
@@ -50,7 +49,7 @@ swift_library = rule(
         "deps": attr.label_list(),
     },
     outputs = {
-        "module": "modules/%{name}.swiftmodule",
-        "library": "modules/lib%{name}.dylib",
+        "module": "%{name}.swiftmodule",
+        "library": "lib%{name}.dylib",
     }
 )
