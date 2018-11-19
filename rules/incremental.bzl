@@ -56,7 +56,7 @@ def _swift_library_impl(ctx):
         "swift-dependencies": _drop_ext(module.path) + ".swiftdeps",
     }
 
-    outputs_json = ctx.actions.declare_file("modules/{}.outputs.json".format(module_name))
+    outputs_json = ctx.actions.declare_file("{}.outputs.json".format(module_name))
     ctx.actions.write(
         outputs_json,
         struct(**output_file_map).to_json(),
