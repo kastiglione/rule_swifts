@@ -34,7 +34,6 @@ def _swift_library_impl(ctx):
         outputs = [library],
     )
 
-
     return [
         DefaultInfo(
             files = depset(direct = [module, library], transitive = dependencies),
