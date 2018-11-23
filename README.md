@@ -5,7 +5,7 @@ The strategies live in `rules/`. To try one, edit `BUILD` and `load()` the desir
 To build the sample project, run:
 
 ```sh
-bazel build --spawn_strategy=standalone C
+bazel build --spawn_strategy=standalone Sources/C
 ```
 
 To visualize the build sequence, build with these extra flags:
