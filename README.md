@@ -1,6 +1,6 @@
 ### Exploring Swift build stragegies.
 
-The strategies live in `rules/`. To try one, edit `BUILD` and `load()` the desired strategy.
+The strategies live in `rules/`. To try one, edit `Sources/BUILD` and pick the desired Swift build strategy to `load()`.
 
 To build the sample project, run:
 
