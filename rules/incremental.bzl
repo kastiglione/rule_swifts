@@ -53,7 +53,7 @@ def _swift_library_impl(ctx):
 
     # Empty string key tells swiftc the path to write module incremental state.
     output_file_map[""] = {
-        "swift-dependencies": _drop_ext(module.path) + ".swiftdeps",
+        "swift-dependencies": ctx.var["BINDIR"] + "/" + module_name + ".swiftdeps",
     }
 
     outputs_json = ctx.actions.declare_file("{}.outputs.json".format(module_name))

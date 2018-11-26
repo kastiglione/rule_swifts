@@ -1,5 +1,5 @@
-load("@rule_swifts//rules:twophase.bzl", "swift_library")
-# load("@rule_swifts//rules:incremental.bzl", "swift_library")
+# load("@rule_swifts//rules:twophase.bzl", "swift_library")
+load("@rule_swifts//rules:incremental.bzl", "swift_library")
 
 swift_library(
   name = "A",
