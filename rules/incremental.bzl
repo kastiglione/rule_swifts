@@ -35,6 +35,7 @@ def _swift_library_impl(ctx):
     # After all that, add the module's Swift source files as args.
     compile_args += [f.path for f in ctx.files.srcs]
 
+    bindir = ctx.var["BINDIR"]
     object_paths = []
     output_file_map = {}
     for source in ctx.files.srcs:
@@ -42,7 +43,7 @@ def _swift_library_impl(ctx):
         # object_path = bindir + _drop_ext(source.path) + ".o"
         # However the intermediate paths don't exist, it requires a `mkdir -p`.
         # Instead, the output path is bindir/<module_name>_File.o
-        prefix = ctx.var["BINDIR"] + "/" + module_name + "_" + _drop_ext(source.basename)
+        prefix = "{}/{}_{}".format(bindir, module_name, _drop_ext(source.basename))
         object_path = prefix + ".o"
         object_paths.append(object_path)
         output_file_map[source.path] = {
@@ -53,7 +54,7 @@ def _swift_library_impl(ctx):
 
     # Empty string key tells swiftc the path to write module incremental state.
     output_file_map[""] = {
-        "swift-dependencies": ctx.var["BINDIR"] + "/" + module_name + ".swiftdeps",
+        "swift-dependencies": "{}/{}.swiftdeps".format(bindir, module_name),
     }
 
     outputs_json = ctx.actions.declare_file("{}.outputs.json".format(module_name))
