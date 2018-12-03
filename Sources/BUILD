@@ -1,5 +1,6 @@
 # load("@rule_swifts//rules:twophase.bzl", "swift_library")
 load("@rule_swifts//rules:incremental.bzl", "swift_library")
+load("@build_bazel_rules_swift//swift:swift.bzl", "swift_binary")
 
 swift_library(
   name = "A",
@@ -16,4 +17,10 @@ swift_library(
   name = "C",
   srcs = glob(["C/*.swift"]),
   deps = [":B"],
+)
+
+swift_binary(
+  name = "runme",
+  srcs = ["main.swift"],
+  deps = [":C"],
 )
