@@ -62,6 +62,7 @@ def _swift_library_impl(ctx):
 
     compile_args = [
         "-target", _compile_target(ctx),
+        "-sdk", ctx.fragments.apple.single_arch_platform.name_in_plist.lower(),
         "-incremental",
         "-driver-show-incremental",
         "-enable-batch-mode",
