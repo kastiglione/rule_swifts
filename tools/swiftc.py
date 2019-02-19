@@ -12,20 +12,14 @@ import sys
 
 def _main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-sdk")
     parser.add_argument("-module-name")
     parser.add_argument("-output-file-map")
     parser.add_argument("-emit-module-path")
     args, _ = parser.parse_known_args()
 
-    compile_args = sys.argv[1:]
-
-    # Move `-sdk <appleos>` from swiftc to xcrun.
     xcrun = ["/usr/bin/xcrun"]
-    if args.sdk and not os.path.exists(args.sdk):
-        xcrun.extend(("-sdk", args.sdk))
-        pos = compile_args.index("-sdk")
-        del compile_args[pos:pos+2]
+    if os.environ["xcrun_sdk"]:
+        xcrun.extend(("-sdk", os.environ["xcrun_sdk"]))
 
     # Determine archive output path.
     module_dir = os.path.dirname(args.emit_module_path)
@@ -47,7 +41,7 @@ def _main():
             os.makedirs(dir)
 
     # Pass all args through to swiftc.
-    compile = xcrun + ["swiftc"] + compile_args
+    compile = xcrun + ["swiftc"] + sys.argv[1:]
     subprocess.check_call(compile)
 
     # Generate the static library.

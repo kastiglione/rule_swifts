@@ -14,12 +14,15 @@ def _list_get(values, key):
             return values[i + 1]
     return None
 
-def _compile_target(ctx):
+def _bazel_target(ctx):
     cpu = ctx.fragments.apple.single_arch_cpu
-    platform = ctx.fragments.apple.single_arch_platform
-    xcode_config = ctx.attr._xcode_config[apple_common.XcodeVersionConfig]
-    version = xcode_config.minimum_os_for_platform_type(platform.platform_type)
-    return "{}-apple-{}{}".format(cpu, platform.platform_type, version)
+    platform_type = ctx.fragments.apple.single_arch_platform.platform_type
+    version_config = ctx.attr._xcode_config[apple_common.XcodeVersionConfig]
+    version = version_config.minimum_os_for_platform_type(platform_type)
+    return "{}-apple-{}{}".format(cpu, platform_type, version)
+
+def _bazel_sdk(ctx):
+    return ctx.fragments.apple.single_arch_platform.name_in_plist.lower()
 
 def _swift_library_impl(ctx):
     module_name = ctx.attr.module_name or ctx.label.name
@@ -61,8 +64,7 @@ def _swift_library_impl(ctx):
     ]).to_list()
 
     compile_args = [
-        "-target", _compile_target(ctx),
-        "-sdk", ctx.fragments.apple.single_arch_platform.name_in_plist.lower(),
+        "-target", _bazel_target(ctx),
         "-incremental",
         "-driver-show-incremental",
         "-enable-batch-mode",
@@ -82,6 +84,7 @@ def _swift_library_impl(ctx):
         mnemonic = "CompileSwift",
         executable = ctx.executable._swiftc,
         arguments = compile_args + ctx.fragments.swift.copts(),
+        env = {"xcrun_sdk": _bazel_sdk(ctx)},
         inputs = ctx.files.srcs + swift_dependencies + [outputs_json],
         outputs = [module, library],
     )
