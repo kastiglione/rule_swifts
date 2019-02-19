@@ -1,4 +1,7 @@
-### Exploring Swift build stragegies.
+### Exploring Swift build strategies.
+
+1. Incremental builds
+2. Two phase ("pipelined") builds
 
 The strategies live in `rules/`. To try one, edit `Sources/BUILD` and pick the desired Swift build strategy to `load()`.
 
