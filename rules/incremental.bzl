@@ -30,6 +30,7 @@ def _swift_library_impl(ctx):
 
     # Begin -output-file-map handling code.
     # This is what makes incremental work.
+
     output_file_map = {}
     for source in ctx.files.srcs:
         # These are incremental artifacts that need to persist between builds, and as
@@ -54,6 +55,11 @@ def _swift_library_impl(ctx):
 
     # End -output-file-map handling code.
 
+    swift_dependencies = depset(transitive = [
+        dep[SwiftInfo].transitive_swiftmodules
+        for dep in ctx.attr.deps
+    ]).to_list()
+
     compile_args = [
         "-target", _compile_target(ctx),
         "-incremental",
@@ -65,21 +71,16 @@ def _swift_library_impl(ctx):
         "-output-file-map", outputs_json.path,
     ]
 
-    swift_dependencies = depset(transitive = [
-        dep[SwiftInfo].transitive_swiftmodules
-        for dep in ctx.attr.deps
-    ]).to_list()
-
-    # Search paths for .swiftmodule files.
+    # Set the swiftmopdule search paths.
     compile_args += ["-I" + f.dirname for f in swift_dependencies]
 
-    # Add the source files as args.
+    # Add the source paths.
     compile_args += [f.path for f in ctx.files.srcs]
 
     ctx.actions.run(
         mnemonic = "CompileSwift",
         executable = ctx.executable._swiftc,
-        arguments = compile_args,
+        arguments = compile_args + ctx.fragments.swift.copts(),
         inputs = ctx.files.srcs + swift_dependencies + [outputs_json],
         outputs = [module, library],
     )
