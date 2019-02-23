@@ -58,7 +58,7 @@ def _swift_library_impl(ctx):
 
     # End -output-file-map handling code.
 
-    swift_dependencies = depset(transitive = [
+    swiftmodule_inputs = depset(transitive = [
         dep[SwiftInfo].transitive_swiftmodules
         for dep in ctx.attr.deps
     ]).to_list()
@@ -75,7 +75,7 @@ def _swift_library_impl(ctx):
     ]
 
     # Set the swiftmodule search paths.
-    compile_args += ["-I" + f.dirname for f in swift_dependencies]
+    compile_args += ["-I" + f.dirname for f in swiftmodule_inputs]
 
     # Add the source paths.
     compile_args += [f.path for f in ctx.files.srcs]
@@ -85,7 +85,7 @@ def _swift_library_impl(ctx):
         executable = ctx.executable._swiftc,
         arguments = compile_args + ctx.fragments.swift.copts(),
         env = {"xcrun_sdk": _bazel_sdk(ctx)},
-        inputs = ctx.files.srcs + swift_dependencies + [outputs_json],
+        inputs = ctx.files.srcs + swiftmodule_inputs + [outputs_json],
         outputs = [module, library],
     )
 
