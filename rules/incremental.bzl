@@ -74,7 +74,7 @@ def _swift_library_impl(ctx):
         "-output-file-map", outputs_json.path,
     ]
 
-    # Set the swiftmopdule search paths.
+    # Set the swiftmodule search paths.
     compile_args += ["-I" + f.dirname for f in swift_dependencies]
 
     # Add the source paths.
