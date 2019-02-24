@@ -4,12 +4,9 @@ def _drop_ext(path):
     "Return the path with no extension."
     return path[:path.rfind(".")]
 
-def _list_get(values, key):
+def _list_get(key, values):
     "Find the value that follows the key, if any."
-    count = len(values)
-    if count == 0:
-        return None
-    for i in range(count - 1):
+    for i in range(len(values)):
         if values[i] == key:
             return values[i + 1]
     return None
@@ -91,7 +88,7 @@ def _swift_library_impl(ctx):
 
     return [SwiftInfo(
         module_name = module_name,
-        swift_version = _list_get(ctx.fragments.swift.copts(), "-swift-version"),
+        swift_version = _list_get("-swift-version", ctx.fragments.swift.copts()),
         direct_swiftmodules = [module],
         direct_libraries = [library],
         transitive_swiftmodules = depset([module], transitive = [
