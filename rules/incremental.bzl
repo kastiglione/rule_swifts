@@ -23,8 +23,8 @@ def _bazel_sdk(ctx):
 
 def _swift_library_impl(ctx):
     module_name = ctx.attr.module_name or ctx.label.name
-    module = ctx.outputs.module
-    library = ctx.outputs.library
+    module = ctx.actions.declare_file("{}.swiftmodule".format(module_name))
+    library = ctx.actions.declare_file("lib{}.a".format(module_name))
 
     bindir = ctx.var["BINDIR"]
 
@@ -121,8 +121,5 @@ swift_library = rule(
             cfg = "host",
         ),
     },
-    outputs = {
-        "module": "%{name}.swiftmodule",
-        "library": "lib%{name}.a",
-    },
+    # outputs (.swiftmodule and .a) are declared in rule
 )
