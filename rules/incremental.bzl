@@ -35,7 +35,7 @@ def _swift_library_impl(ctx):
     for source in ctx.files.srcs:
         # These are incremental artifacts that need to persist between builds, and as
         # such are not declared to Bazel. If they were declared, Bazel would remove them.
-        prefix = "{}/{}".format(bindir, _drop_ext(source.path))
+        prefix = "{}/Incremental/{}".format(bindir, _drop_ext(source.path))
         output_file_map[source.path] = {
             "object": prefix + ".o",
             "swiftmodule": prefix + ".swiftmodule",
@@ -44,7 +44,7 @@ def _swift_library_impl(ctx):
 
     # Empty string key tells swiftc the path to write module incremental state.
     output_file_map[""] = {
-        "swift-dependencies": "{}/{}.swiftdeps".format(bindir, module_name),
+        "swift-dependencies": "{}/Incremental/{}/{}.swiftdeps".format(bindir, ctx.label.package, module_name),
     }
 
     outputs_json = ctx.actions.declare_file("{}.outputs.json".format(module_name))
