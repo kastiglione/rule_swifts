@@ -13,10 +13,14 @@ def _list_get(key, values):
 
 def _bazel_target(ctx):
     cpu = ctx.fragments.apple.single_arch_cpu
-    platform_type = ctx.fragments.apple.single_arch_platform.platform_type
+    platform = ctx.fragments.apple.single_arch_platform
+    platform_type = platform.platform_type
     version_config = ctx.attr._xcode_config[apple_common.XcodeVersionConfig]
     version = version_config.minimum_os_for_platform_type(platform_type)
-    return "{}-apple-{}{}".format(cpu, platform_type, version)
+    triple = "{}-apple-{}{}".format(cpu, platform_type, version)
+    if not platform.is_device:
+        triple += "-simulator"
+    return triple
 
 def _bazel_sdk(ctx):
     return ctx.fragments.apple.single_arch_platform.name_in_plist.lower()
