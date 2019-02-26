@@ -51,7 +51,7 @@ def _swift_library_impl(ctx):
         "swift-dependencies": "{}/Incremental/{}/{}.swiftdeps".format(bindir, ctx.label.package, module_name),
     }
 
-    output_file_map = ctx.actions.declare_file("{}.outputs.json".format(module_name))
+    output_file_map = ctx.actions.declare_file("{}.output-file-map.json".format(module_name))
     ctx.actions.write(
         output_file_map,
         struct(**incremental_outputs).to_json(),
