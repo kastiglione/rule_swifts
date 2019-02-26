@@ -75,6 +75,15 @@ def _swift_library_impl(ctx):
         "-output-file-map", outputs_json.path,
     ]
 
+    mode_flags = {
+        "dbg": ["-Onone", "-g", "-DDEBUG"],
+        "fastbuild": ["-Onone", "-gline-tables-only"],
+        "opt": ["-O"], # TODO: -g, -wmo
+    }
+
+    compilation_mode = ctx.var["COMPILATION_MODE"]
+    compile_args += mode_flags[compilation_mode]
+
     # Set the swiftmodule search paths.
     compile_args += ["-I" + f.dirname for f in swiftmodule_inputs]
 
