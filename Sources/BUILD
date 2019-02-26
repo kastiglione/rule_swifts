@@ -21,6 +21,7 @@ swift_library(
 
 swift_binary(
   name = "runme",
+  module_name = "runme",
   srcs = ["main.swift"],
   deps = [":C"],
 )

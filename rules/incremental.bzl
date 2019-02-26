@@ -70,10 +70,17 @@ def _swift_library_impl(ctx):
         "-driver-show-incremental",
         "-enable-batch-mode",
         "-module-name", module_name,
+        "-parse-as-library",
         "-emit-object",
         "-emit-module-path", module.path,
         "-output-file-map", outputs_json.path,
     ]
+
+    # TODO: Handle these flags, maybe.
+    # -enforce-exclusivity -- match Xcode, but behavior depends on swift-version
+    # -enable-testing -- for targets depended on by tests
+    # -application-extension -- for targets dependend on by extensions
+    # -Xfrontend -serialize-debugging-options -- Xcode adds this
 
     mode_flags = {
         "dbg": ["-Onone", "-g", "-DDEBUG"],
