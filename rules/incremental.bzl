@@ -35,26 +35,26 @@ def _swift_library_impl(ctx):
     # Begin -output-file-map handling code.
     # This is what makes incremental work.
 
-    output_file_map = {}
+    incremental_outputs = {}
     for source in ctx.files.srcs:
         # These are incremental artifacts that need to persist between builds, and as
         # such are not declared to Bazel. If they were declared, Bazel would remove them.
         prefix = "{}/Incremental/{}".format(bindir, _drop_ext(source.path))
-        output_file_map[source.path] = {
+        incremental_outputs[source.path] = {
             "object": prefix + ".o",
             "swiftmodule": prefix + ".swiftmodule",
             "swift-dependencies": prefix + ".swiftdeps",
         }
 
     # Empty string key tells swiftc the path to write module incremental state.
-    output_file_map[""] = {
+    incremental_outputs[""] = {
         "swift-dependencies": "{}/Incremental/{}/{}.swiftdeps".format(bindir, ctx.label.package, module_name),
     }
 
-    outputs_json = ctx.actions.declare_file("{}.outputs.json".format(module_name))
+    output_file_map = ctx.actions.declare_file("{}.outputs.json".format(module_name))
     ctx.actions.write(
-        outputs_json,
-        struct(**output_file_map).to_json(),
+        output_file_map,
+        struct(**incremental_outputs).to_json(),
     )
 
     # End -output-file-map handling code.
@@ -74,7 +74,7 @@ def _swift_library_impl(ctx):
         "-parse-as-library",
         "-emit-object",
         "-emit-module-path", module.path,
-        "-output-file-map", outputs_json.path,
+        "-output-file-map", output_file_map.path,
     ]
 
     # TODO: Handle these flags, maybe.
@@ -104,7 +104,7 @@ def _swift_library_impl(ctx):
         executable = ctx.executable._swiftc,
         arguments = compile_args + ctx.fragments.swift.copts(),
         env = {"xcrun_sdk": _bazel_sdk(ctx)},
-        inputs = ctx.files.srcs + module_inputs + [outputs_json],
+        inputs = ctx.files.srcs + module_inputs + [output_file_map],
         outputs = [module, library],
     )
 
