@@ -1,36 +1,9 @@
 load("@build_bazel_rules_swift//swift:swift.bzl", "SwiftInfo", "SwiftClangModuleInfo")
+load(":helpers.bzl", "helpers")
 
 def _drop_ext(path):
     "Return the path with no extension."
     return path[:path.rfind(".")]
-
-def _list_get(key, values):
-    "Find the value that follows the key, if any."
-    for i in range(len(values)):
-        if values[i] == key:
-            return values[i + 1]
-    return None
-
-def _file_dirname(file):
-    return file.dirname
-
-def _string_dirname(path):
-    "Return the parent path."
-    return path[:path.rfind("/")]
-
-def _bazel_target(ctx):
-    cpu = ctx.fragments.apple.single_arch_cpu
-    platform = ctx.fragments.apple.single_arch_platform
-    platform_type = platform.platform_type
-    version_config = ctx.attr._xcode_config[apple_common.XcodeVersionConfig]
-    version = version_config.minimum_os_for_platform_type(platform_type)
-    triple = "{}-apple-{}{}".format(cpu, platform_type, version)
-    if not platform.is_device:
-        triple += "-simulator"
-    return triple
-
-def _bazel_sdk(ctx):
-    return ctx.fragments.apple.single_arch_platform.name_in_plist.lower()
 
 def _swift_library_impl(ctx):
     module_name = ctx.attr.module_name or ctx.label.name
@@ -74,7 +47,7 @@ def _swift_library_impl(ctx):
 
     compile_args = ctx.actions.args()
     compile_args.add_all([
-        "-target", _bazel_target(ctx),
+        "-target", helpers.bazel_target(ctx),
         "-module-name", module_name,
         "-incremental", "-driver-show-incremental",
         "-enable-batch-mode",
@@ -102,7 +75,7 @@ def _swift_library_impl(ctx):
     compile_args.add_all(
         depset(transitive = swiftmodules),
         format_each = "-I%s",
-        map_each = _file_dirname,
+        map_each = helpers.dirname,
         uniquify = True,
     )
 
@@ -110,7 +83,7 @@ def _swift_library_impl(ctx):
     compile_args.add_all(
         depset(transitive = [dep.framework_dir for dep in objc_deps]),
         format_each = "-F%s",
-        map_each = _string_dirname,
+        map_each = helpers.dirname,
         uniquify = True,
     )
 
@@ -125,7 +98,7 @@ def _swift_library_impl(ctx):
         mnemonic = "CompileSwift",
         executable = ctx.executable._swiftc,
         arguments = [compile_args],
-        env = {"xcrun_sdk": _bazel_sdk(ctx)},
+        env = {"xcrun_sdk": helpers.bazel_sdk(ctx)},
         inputs = depset(
             direct = ctx.files.srcs + [output_file_map],
             transitive = swiftmodules + frameworks,
@@ -142,7 +115,7 @@ def _swift_library_impl(ctx):
     return [
         SwiftInfo(
             module_name = module_name,
-            swift_version = _list_get("-swift-version", ctx.fragments.swift.copts()),
+            swift_version = helpers.list_get("-swift-version", ctx.fragments.swift.copts()),
             direct_swiftmodules = [module],
             direct_libraries = [library],
             transitive_swiftmodules = depset([module], transitive = swiftmodules),
