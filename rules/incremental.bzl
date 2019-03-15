@@ -1,4 +1,4 @@
-load("@build_bazel_rules_swift//swift:swift.bzl", "SwiftInfo")
+load("@build_bazel_rules_swift//swift:swift.bzl", "SwiftInfo", "SwiftClangModuleInfo")
 
 def _drop_ext(path):
     "Return the path with no extension."
@@ -10,6 +10,13 @@ def _list_get(key, values):
         if values[i] == key:
             return values[i + 1]
     return None
+
+def _file_dirname(file):
+    return file.dirname
+
+def _string_dirname(path):
+    "Return the parent path."
+    return path[:path.rfind("/")]
 
 def _bazel_target(ctx):
     cpu = ctx.fragments.apple.single_arch_cpu
@@ -30,11 +37,17 @@ def _swift_library_impl(ctx):
     module = ctx.actions.declare_file("{}.swiftmodule".format(module_name))
     library = ctx.actions.declare_file("lib{}.a".format(module_name))
 
-    bindir = ctx.var["BINDIR"]
+    deps = ctx.attr.deps
+    swift_deps = [dep[SwiftInfo] for dep in deps if SwiftInfo in dep]
+    objc_deps = [dep[apple_common.Objc] for dep in deps if apple_common.Objc in dep]
+
+    swiftmodules = [dep.transitive_swiftmodules for dep in swift_deps]
+    frameworks = [dep.static_framework_file for dep in objc_deps]
 
     # Begin -output-file-map handling code.
     # This is what makes incremental work.
 
+    bindir = ctx.var["BINDIR"]
     incremental_outputs = {}
     for source in ctx.files.srcs:
         # These are incremental artifacts that need to persist between builds, and as
@@ -59,23 +72,17 @@ def _swift_library_impl(ctx):
 
     # End -output-file-map handling code.
 
-    # The .swiftmodules dependencies required by the compiler, passed as action `inputs`
-    module_inputs = depset(transitive = [
-        dep[SwiftInfo].transitive_swiftmodules
-        for dep in ctx.attr.deps
-    ]).to_list()
-
-    compile_args = [
+    compile_args = ctx.actions.args()
+    compile_args.add_all([
         "-target", _bazel_target(ctx),
-        "-incremental",
-        "-driver-show-incremental",
-        "-enable-batch-mode",
         "-module-name", module_name,
-        "-parse-as-library",
+        "-incremental", "-driver-show-incremental",
+        "-enable-batch-mode",
+        "-output-file-map", output_file_map,
+        "-emit-module-path", module,
         "-emit-object",
-        "-emit-module-path", module.path,
-        "-output-file-map", output_file_map.path,
-    ]
+        "-parse-as-library",
+    ])
 
     # TODO: Handle these flags, maybe.
     # -enforce-exclusivity -- match Xcode, but behavior depends on swift-version
@@ -83,48 +90,73 @@ def _swift_library_impl(ctx):
     # -application-extension -- for targets dependend on by extensions
     # -Xfrontend -serialize-debugging-options -- Xcode adds this
 
+    mode = ctx.var["COMPILATION_MODE"]
     mode_flags = {
         "dbg": ["-Onone", "-g", "-DDEBUG"],
         "fastbuild": ["-Onone", "-gline-tables-only"],
         "opt": ["-O"], # TODO: -g, -wmo
     }
-
-    compilation_mode = ctx.var["COMPILATION_MODE"]
-    compile_args += mode_flags[compilation_mode]
+    compile_args.add_all(mode_flags[mode])
 
     # Set the swiftmodule search paths.
-    search_paths = depset([f.dirname for f in module_inputs])
-    compile_args += ["-I" + path for path in search_paths.to_list()]
+    compile_args.add_all(
+        depset(transitive = swiftmodules),
+        format_each = "-I%s",
+        map_each = _file_dirname,
+        uniquify = True,
+    )
+
+    # Set the framework search paths.
+    compile_args.add_all(
+        depset(transitive = [dep.framework_dir for dep in objc_deps]),
+        format_each = "-F%s",
+        map_each = _string_dirname,
+        uniquify = True,
+    )
+
+    # Put extra compiler flags last, in case they're to override earlier flags.
+    compile_args.add_all(ctx.attr.copts)
+    compile_args.add_all(ctx.fragments.swift.copts())
 
     # Add the source paths.
-    compile_args += [f.path for f in ctx.files.srcs]
+    compile_args.add_all(ctx.files.srcs)
 
     ctx.actions.run(
         mnemonic = "CompileSwift",
         executable = ctx.executable._swiftc,
-        arguments = compile_args + ctx.fragments.swift.copts(),
+        arguments = [compile_args],
         env = {"xcrun_sdk": _bazel_sdk(ctx)},
-        inputs = ctx.files.srcs + module_inputs + [output_file_map],
+        inputs = depset(
+            direct = ctx.files.srcs + [output_file_map],
+            transitive = swiftmodules + frameworks,
+        ),
         outputs = [module, library],
     )
 
-    return [SwiftInfo(
-        module_name = module_name,
-        swift_version = _list_get("-swift-version", ctx.fragments.swift.copts()),
-        direct_swiftmodules = [module],
-        direct_libraries = [library],
-        transitive_swiftmodules = depset([module], transitive = [
-            dep[SwiftInfo].transitive_swiftmodules
-            for dep in ctx.attr.deps
-        ]),
-        transitive_libraries = depset([library], transitive = [
-            dep[SwiftInfo].transitive_libraries
-            for dep in ctx.attr.deps
-        ]),
-        transitive_defines = depset([]),
-        transitive_additional_inputs = depset([]),
-        transitive_linkopts = depset([]),
-    )]
+    # Needed by both SwiftInfo and apple_common.Objc.
+    libraries = depset([library], transitive = [
+        dep.transitive_libraries
+        for dep in swift_deps
+    ])
+
+    return [
+        SwiftInfo(
+            module_name = module_name,
+            swift_version = _list_get("-swift-version", ctx.fragments.swift.copts()),
+            direct_swiftmodules = [module],
+            direct_libraries = [library],
+            transitive_swiftmodules = depset([module], transitive = swiftmodules),
+            transitive_libraries = libraries,
+            transitive_defines = depset([]),
+            transitive_additional_inputs = depset([]),
+            transitive_linkopts = depset([]),
+        ),
+        apple_common.new_objc_provider(
+            uses_swift = True,
+            library = libraries,
+            providers = objc_deps,
+        ),
+    ]
 
 swift_library = rule(
     implementation = _swift_library_impl,
@@ -132,7 +164,15 @@ swift_library = rule(
     attrs = {
         "module_name": attr.string(),
         "srcs": attr.label_list(allow_files = [".swift"]),
-        "deps": attr.label_list(providers = [[SwiftInfo]]),
+        "deps": attr.label_list(providers = [
+            [CcInfo],
+            [SwiftClangModuleInfo],
+            [SwiftInfo],
+            [apple_common.Objc],
+        ]),
+        "copts": attr.string_list(),
+        "alwayslink": attr.bool(default = False),
+        "data": attr.label_list(allow_files = True),
         "_xcode_config": attr.label(default = configuration_field(
             fragment = "apple",
             name = "xcode_config_label",
