@@ -1,4 +1,4 @@
-load("@build_bazel_rules_swift//swift:swift.bzl", "SwiftInfo", "SwiftClangModuleInfo")
+load("@build_bazel_rules_swift//swift:swift.bzl", "SwiftInfo", "SwiftClangModuleInfo", "swift_common", "SwiftToolchainInfo")
 load(":helpers.bzl", "helpers")
 
 def _drop_ext(path):
@@ -128,33 +128,38 @@ def _swift_library_impl(ctx):
             uses_swift = True,
             library = libraries,
             providers = objc_deps,
+            linkopt = depset(swift_common.swift_runtime_linkopts(
+                is_static = False,
+                toolchain = ctx.attr._toolchain[SwiftToolchainInfo],
+            )),
         ),
     ]
 
 swift_library = rule(
     implementation = _swift_library_impl,
     fragments = ["apple", "swift"],
-    attrs = {
-        "module_name": attr.string(),
-        "srcs": attr.label_list(allow_files = [".swift"]),
-        "deps": attr.label_list(providers = [
+    attrs = dict(
+        swift_common.library_rule_attrs(),
+        module_name = attr.string(),
+        srcs = attr.label_list(allow_files = [".swift"]),
+        deps = attr.label_list(providers = [
             [CcInfo],
             [SwiftClangModuleInfo],
             [SwiftInfo],
             [apple_common.Objc],
         ]),
-        "copts": attr.string_list(),
-        "alwayslink": attr.bool(default = False),
-        "data": attr.label_list(allow_files = True),
-        "_xcode_config": attr.label(default = configuration_field(
+        copts = attr.string_list(),
+        alwayslink = attr.bool(default = False),
+        data = attr.label_list(allow_files = True),
+        _xcode_config = attr.label(default = configuration_field(
             fragment = "apple",
             name = "xcode_config_label",
         )),
-        "_swiftc": attr.label(
+        _swiftc = attr.label(
             default = "//tools:swiftc",
             executable = True,
             cfg = "host",
         ),
-    },
+    ),
     # outputs (.swiftmodule and .a) are declared in rule
 )
