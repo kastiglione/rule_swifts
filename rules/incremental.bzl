@@ -107,28 +107,21 @@ def _swift_library_impl(ctx):
         execution_requirements = {"no-sandbox": "1"},
     )
 
-    # Needed by both SwiftInfo and apple_common.Objc.
-    libraries = depset([library], transitive = [
-        dep.transitive_libraries
-        for dep in swift_deps
-    ])
-
     return [
-        SwiftInfo(
+        swift_common.build_swift_info(
             module_name = module_name,
             swift_version = helpers.list_get("-swift-version", ctx.fragments.swift.copts()),
             direct_swiftmodules = [module],
             direct_libraries = [library],
-            transitive_swiftmodules = depset([module], transitive = swiftmodules),
-            transitive_libraries = libraries,
-            transitive_defines = depset([]),
-            transitive_additional_inputs = depset([]),
-            transitive_linkopts = depset([]),
+            deps = deps,
         ),
         apple_common.new_objc_provider(
             uses_swift = True,
-            library = libraries,
             providers = objc_deps,
+            library = depset([library], transitive = [
+                dep.transitive_libraries
+                for dep in swift_deps
+            ]),
             linkopt = depset(swift_common.swift_runtime_linkopts(
                 is_static = False,
                 toolchain = ctx.attr._toolchain[SwiftToolchainInfo],

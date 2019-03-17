@@ -97,32 +97,25 @@ def _swift_library_impl(ctx):
         outputs = object_files,
     )
 
-    # Needed by both SwiftInfo and apple_common.Objc.
-    libraries = depset(object_files, transitive = [
-        dep.transitive_libraries
-        for dep in swift_deps
-    ])
-
     return [
         # This ensures the object files are built, since they're not predeclared outputs.
         DefaultInfo(
             files = depset(object_files),
         ),
-        SwiftInfo(
+        swift_common.build_swift_info(
             module_name = module_name,
             swift_version = helpers.list_get("-swift-version", ctx.fragments.swift.copts()),
             direct_swiftmodules = [module],
             direct_libraries = object_files,
-            transitive_swiftmodules = depset([module], transitive = swiftmodules),
-            transitive_libraries = libraries,
-            transitive_defines = depset([]),
-            transitive_additional_inputs = depset([]),
-            transitive_linkopts = depset([]),
+            deps = deps,
         ),
         apple_common.new_objc_provider(
             uses_swift = True,
-            library = libraries,
             providers = objc_deps,
+            library = depset(object_files, transitive = [
+                dep.transitive_libraries
+                for dep in swift_deps
+            ]),
             linkopt = depset(swift_common.swift_runtime_linkopts(
                 is_static = False,
                 toolchain = ctx.attr._toolchain[SwiftToolchainInfo],
