@@ -10,7 +10,7 @@ The strategies live in `rules/`. To try one, edit `Sources/BUILD` and pick the d
 To build the sample project, run:
 
 ```sh
-bazel build --spawn_strategy=standalone Sources/C
+bazel build Sources/C
 ```
 
 To visualize the build sequence, build with these extra flags:
