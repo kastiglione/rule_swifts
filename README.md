@@ -13,6 +13,12 @@ To build the sample project, run:
 bazel build Sources/C
 ```
 
+or
+
+```sh
+bazel run Sources/runme
+```
+
 To visualize the build sequence, build with these extra flags:
 
 ```sh
