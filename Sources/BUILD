@@ -1,4 +1,4 @@
-# load("@rule_swifts//rules:twophase.bzl", "swift_library")
+# load("@rule_swifts//rules:pipelined.bzl", "swift_library")
 load("@rule_swifts//rules:incremental.bzl", "swift_library")
 load("@build_bazel_rules_swift//swift:swift.bzl", "swift_binary")
 
