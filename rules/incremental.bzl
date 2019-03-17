@@ -104,6 +104,7 @@ def _swift_library_impl(ctx):
             transitive = swiftmodules + frameworks,
         ),
         outputs = [module, library],
+        execution_requirements = {"no-sandbox": "1"},
     )
 
     # Needed by both SwiftInfo and apple_common.Objc.
